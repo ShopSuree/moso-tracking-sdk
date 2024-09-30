@@ -1,0 +1,24 @@
+{
+  "name": "@mosohq/tracking-sdk",
+  "version": "0.0.1",
+  "main": "./dist/npm/index.js",
+  "types": "./dist/npm/index.d.ts",
+  "source": "./src/index.ts",
+  "scripts": {
+    "build:npm": "tsc",
+    "build:web": "esbuild src/analytics.ts --outfile=dist/web/index.js --bundle --minify --sourcemap",
+    "build": "npm run clean && npm run build:npm && npm run build:web",
+    "clean": "rimraf ./dist/*"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "rimraf": "^5.0.7",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "idb": "^8.0.0"
+  },
+  "description": "Moso Analytics SDK"
+}

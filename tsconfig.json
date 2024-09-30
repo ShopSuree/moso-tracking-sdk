@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "allowSyntheticDefaultImports": true,
+        "module": "commonjs",
+        "lib": [
+            "ESNext",
+            "dom"
+        ],
+        "target": "es5",
+        "declaration": true,
+        "noImplicitAny": true,
+        "sourceMap": true,
+        "outDir": "./dist/npm",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "baseUrl": "../dist/npm",
+        "resolveJsonModule": true
+    },
+    "include": [
+        "./src/index.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist/npm",
+        "./src/__tests__/*"
+    ]
+}
