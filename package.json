@@ -6,9 +6,9 @@
   "source": "./src/index.ts",
   "scripts": {
     "build:npm": "tsc",
-    "build:web": "esbuild src/analytics.ts --outfile=dist/web/index.js --bundle --minify --sourcemap",
+    "build:web": "esbuild src/main.ts --outfile=dist/web/index.js --bundle --minify --sourcemap",
     "build": "npm run clean && npm run build:npm && npm run build:web",
-    "clean": "rimraf ./dist/*"
+    "clean": "rimraf --glob ./dist/*"
   },
   "author": "",
   "license": "ISC",
