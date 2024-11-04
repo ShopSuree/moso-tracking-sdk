@@ -65,6 +65,7 @@ export const initialize = async (options: SdkOptions) => {
     if (url.searchParams.has('u_id') && url.searchParams.has('c_id')) {
         await saveSubId(subIdStore, url.searchParams.get('u_id'));
         await saveCampaignId(campaignIdStore, url.searchParams.get('c_id'));
+        window.location.href = url.href.replace(url.search, '')
     }
 }
 

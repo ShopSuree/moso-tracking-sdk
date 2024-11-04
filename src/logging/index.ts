@@ -13,6 +13,6 @@ export class Logger {
             return;
         }
 
-        console.log("[Moso Analytics]", ...args);
+        console.log("[Moso Affiliate]", ...args);
     } 
 }
