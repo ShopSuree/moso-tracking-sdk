@@ -5,7 +5,7 @@ import {getSubId, initialize} from './core';
 
     initialize(options);
 
-    (window as any).moso = {
+    (window as any).mosoAffiliate = {
         getSubId: () => getSubId(options),
     }
 
