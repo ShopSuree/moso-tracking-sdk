@@ -1,10 +1,10 @@
 import { Logger } from "./logging";
 import { IStorage } from "./storage/types";
-import { Environment, EventType, ReferralLink, SdkOptions, StorageType } from "./types";
+import { Environment, SdkOptions, StorageType } from "./types";
 import { LocalStorageStore } from './storage/local-storage-store';
+import { SessionStorageStore } from './storage/session-storage-store';
 import { IdbStore } from "./storage/idb-store";
 
-const allowedTypes: EventType[] = ["login"]
 
 const getStorage = (key: string, logger: Logger, type: StorageType) => {
 
@@ -16,77 +16,31 @@ const getStorage = (key: string, logger: Logger, type: StorageType) => {
         return new IdbStore(key, logger);
     }
 
+    if (type === "session-storage") {
+        return new SessionStorageStore(key, logger);
+    }
+
     throw new Error(`Storage type not supported.  Invalid Type: ${type}`)
 }
 
-const getLink = async (logger: Logger, store: IStorage) => {
-    const link = await store.getItem();
-
-    if (link == null) {
-        logger.log('Link is missing');
-        return null;
-    }
-
-    try {
-
-        const result = JSON.parse(link);
-
-        if ('link' in result && 'marketer_id' in result && 'timestamp' in result) {
-
-            await store.removeItem();
-
-            logger.log('Got link to record');
-
-            return result as ReferralLink;
-        }
-
-        logger.log('Parse result is not valid')
-
-        return null;
-
-    } catch (e) {
-        logger.log('Parse error')
-        return null;
+const saveSubId = async (store: IStorage, sub_id: string) => {
+    if (typeof sub_id === "string") {
+        await store.setItem(sub_id);
     }
 }
 
-const getSendTimestamp = async (store: IStorage) => {
-    const value = await store.getItem();
-
-    if (value == null) {
-        return null;
-    }
-
-    const numericValue = Number(value);
-
-    if (Number.isInteger(numericValue) == false) {
-        await store.removeItem(); // remove bad value
-        return null;
-    }
-
-    return numericValue;
-}
-
-const saveSendTimestamp = async (store: IStorage) => {
-    await store.setItem(Date.now().toString());
-}
-
-const getDelta = (date: Date): number => {
-    return (new Date() as any) - (date as any);
-}
-
-const saveLink = async (store: IStorage, link: string, marketer_id: string) => {
-    if (typeof link === 'string' && Number.isInteger(Number(marketer_id))) {
-        await store.setItem(JSON.stringify({ link, marketer_id, timestamp: Date.now() }));
+const saveCampaignId = async (store: IStorage, c_id: string) => {
+    if (typeof c_id === "string") {
+        await store.setItem(c_id);
     }
 }
 
-const getReferrerStore = (logger: Logger, type: StorageType) => {
-    return getStorage("MOSO_AFFILIATE_REFERRER", logger, type);
+const getSubIdStore = (logger: Logger, type: StorageType) => {
+    return getStorage("MOSO_AFFILIATE_SUB_ID", logger, type);
 }
 
-const getTimestampStore = (logger: Logger, type: StorageType) => {
-    return getStorage("MOSO_AFFILIATE_TIMESTAMP", logger, type);
+const getCampaignIdStore = (logger: Logger, type: StorageType) => {
+    return getStorage("MOSO_AFFILIATE_C_ID", logger, type);
 }
 
 const getSdkEnvironment = (environment?: Environment | undefined) => {
@@ -103,132 +57,44 @@ export const initialize = async (options: SdkOptions) => {
     const storageType = getStorageType(options.storage_type);
 
     const logger = new Logger(environment);
-    const referrerStore = getReferrerStore(logger, storageType);
+    const subIdStore = getSubIdStore(logger, storageType);
+    const campaignIdStore = getCampaignIdStore(logger, storageType);
 
     logger.log(`Storage Type: ${storageType}`);
 
-    if (url.searchParams.has("m") && url.searchParams.has("source", "moso")) {
-        await saveLink(referrerStore, window.location.href, url.searchParams.get("m")!);
+    if (url.searchParams.has('u_id') && url.searchParams.has('c_id')) {
+        await saveSubId(subIdStore, url.searchParams.get('u_id'));
+        await saveCampaignId(campaignIdStore, url.searchParams.get('c_id'));
     }
 }
 
-export const recordClick = async (options: SdkOptions, url?: string) => {
-
-    const link = url ?? window.location.href;
-    const resolvedUrl = new URL(url ?? window.location.href);
-    const environment = getSdkEnvironment(options.environment);
-    const logger = new Logger(environment);
-
-    if (resolvedUrl.searchParams.has("mid") == false) {
-        logger.log(`Missing mid`)
-        return
-    }
-
-    if (resolvedUrl.searchParams.has("bid") == false) {
-        logger.log(`Missing bid`)
-        return
-    }
-
-    if (resolvedUrl.searchParams.has("blid") == false) {
-        logger.log(`Missing blid`)
-        return
-    }
-
-    try {
-        const response = await fetch(`https://marketer.moso.xyz/api/v1/brand-links/click?api_key=${encodeURIComponent(options.api_key)}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                link,
-                wallet_address: "0xc22d2ee59a228dfa5d2286d41cc6b09f77016201",
-                bid: resolvedUrl.searchParams.get("bid"),
-                mid: resolvedUrl.searchParams.get("mid"),
-                blid: resolvedUrl.searchParams.get("blid")
-            })
-        });
-
-        if (response.ok === true) {
-            logger.log('Request Sent');
-            return;
-        }
-
-        logger.log('Unable to send request');
-    } catch (e: any) {
-        console.error(e);
-    }
-}
-
-export const recordEvent = async (wallet_address: string, type: EventType, options: SdkOptions) => {
-    if (allowedTypes.includes(type) === false) {
-        throw new Error(`Record event not recognized.  Type: ${type}`);
-    }
-
+export const getSubId = async (options: SdkOptions) => {
     const environment = getSdkEnvironment(options.environment);
     const storageType = getStorageType(options.storage_type);
     const logger = new Logger(environment);
-    const referrerStore = getReferrerStore(logger, storageType);
-    const timestampStore = getTimestampStore(logger, storageType);
 
-    const found = await getLink(logger, referrerStore);
-
-    if (found == null) {
-        logger.log('No matching url to record');
-        // no matching url's to record
-        return Promise.resolve();
-    }
-
-    const delta = getDelta(new Date(found.timestamp));
-    const expirationDays = 7;
-    const expiration = 1000 * 60 * 60 * 24 * expirationDays;
-
-    if (delta > expiration) {
-        // do nothing if we have expired
-        logger.log('Url to record has expired');
-        return Promise.resolve();
-    }
-
-    const timestamp = await getSendTimestamp(timestampStore);
-
-    if (timestamp != null) {
-        const delta = getDelta(new Date(timestamp));
-
-        if (delta <= 10000) {
-            // do not keep sending tons of requests on refresh
-            logger.log('Skipping for DDOS prevention');
-            return Promise.resolve();
-        }
-    }
-
-    // the last recorded link should be sent to us
-    const { link, marketer_id } = found;
-
-    // we only want to record specific links that contain search parameters
-    // ex: https://space.id/?m=1&s=moso
-
-    await saveSendTimestamp(timestampStore);
-
+    const subIdStore = getSubIdStore(logger, storageType)
+    const campaignStore = getCampaignIdStore(logger, storageType)
+    let subId = await subIdStore.getItem()
+    let campaignId = await campaignStore.getItem()
     try {
-        const resposne = await fetch(`https://marketer.moso.xyz/api/v1/brand-links/click?api_key=${encodeURIComponent(options.api_key)}`, {
+        const resposne = await fetch(`https://staging.moso.xyz/web2/api/track`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                link,
-                wallet_address,
-                marketer_id
+                sub_id: subId,
+                client_id: campaignId
             })
         });
 
         if (resposne.ok === true) {
-            logger.log('Request Sent');
-            return;
+            return subId;
         }
 
-        logger.log('Unable to send request');
+        return null;
     } catch (e: any) {
-        console.error(e);
+        return null;
     }
 }
