@@ -1,5 +1,5 @@
-import { SdkOptions } from "./types";
-import {getSubId, initialize} from './core';
+import { SdkOptions, TrackData } from "./types";
+import {getSubId, initialize, track} from './core';
 
 ((options: SdkOptions) => {
 
@@ -7,6 +7,8 @@ import {getSubId, initialize} from './core';
 
     (window as any).mosoAffiliate = {
         getSubId: () => getSubId(options),
+        track: (data: TrackData) => track(options, data),
+
     }
 
 })({

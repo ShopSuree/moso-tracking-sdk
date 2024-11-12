@@ -1,10 +1,10 @@
 import { Logger } from "./logging";
 import { IStorage } from "./storage/types";
-import { Environment, SdkOptions, StorageType } from "./types";
+import { Environment, SdkOptions, StorageType, TrackData } from "./types";
 import { LocalStorageStore } from './storage/local-storage-store';
 import { SessionStorageStore } from './storage/session-storage-store';
 import { IdbStore } from "./storage/idb-store";
-
+import { API_KEY } from './constants';
 
 const getStorage = (key: string, logger: Logger, type: StorageType) => {
 
@@ -97,5 +97,43 @@ export const getSubId = async (options: SdkOptions) => {
         return null;
     } catch (e: any) {
         return null;
+    }
+}
+export const track = async (
+    options: SdkOptions,
+    data: TrackData,
+) => {
+    const environment = getSdkEnvironment(options.environment);
+    const storageType = getStorageType(options.storage_type);
+    const logger = new Logger(environment);
+
+    const campaignStore = getCampaignIdStore(logger, storageType);
+    const clientId = await campaignStore.getItem();
+
+    try {
+        const response = await fetch('https://marketer.moso.xyz/api/v1/gather?api_key='+API_KEY, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'purchase',
+                data: {
+                    ...data,
+                },
+                source: window.location.href,
+                clientId: clientId
+            })
+        });
+
+        if (response.ok) {
+            return true;
+        }
+
+        logger.log('Track request failed:', response.statusText);
+        return false;
+    } catch (e: any) {
+        logger.log('Track request error:', e);
+        return false;
     }
 }
