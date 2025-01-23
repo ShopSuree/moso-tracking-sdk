@@ -111,7 +111,7 @@ export const track = async (
     const clientId = await campaignStore.getItem();
 
     try {
-        const response = await fetch('https://marketer.moso.xyz/api/v1/gather?api_key='+API_KEY, {
+        const response = await fetch('https://api.moso.xyz/api/v1/gather?api_key='+API_KEY, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
